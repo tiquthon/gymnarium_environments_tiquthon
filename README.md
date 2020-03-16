@@ -1,2 +1,5 @@
-# gymnarium_environments_tiquthon
-Environments crate for gymnarium framework containing environments created by me.
+# Gymnarium: Tiquthon Environments
+
+Environments crate for [Gymnarium](https://github.com/tiquthon/gymnarium) framework.
+
+Contains environments thought up and created by me.
