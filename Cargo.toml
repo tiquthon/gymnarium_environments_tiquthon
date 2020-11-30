@@ -1,0 +1,17 @@
+[package]
+name = "gymnarium_environments_tiquthon"
+version = "0.1.0"
+
+description = "A collection of environments both thought up by me as well as inspired by others."
+keywords = ["gym", "reinforcement", "learning", "environment", "tiquthon", "code_bullet", "code", "bullet"]
+
+repository = "https://github.com/tiquthon/gymnarium_environments_tiquthon"
+authors = ["Thimo Neumann <tiquthon@gmail.com>"]
+
+edition = "2018"
+license = "MIT"
+
+[dependencies]
+gymnarium_base = { path = "../gymnarium_base" }
+gymnarium_visualisers_base = { path = "../gymnarium_visualisers_base" }
+serde = { version = "1.0.117", features = ["derive"] }
