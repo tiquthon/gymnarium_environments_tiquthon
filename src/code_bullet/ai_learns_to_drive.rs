@@ -449,7 +449,7 @@ impl Default for AiLearnsToDrive {
 
             show_sensor_lines: false,
             show_track: true,
-            show_reward_gates: true,
+            show_reward_gates: false,
         }
     }
 }
