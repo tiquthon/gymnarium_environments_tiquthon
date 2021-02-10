@@ -37,7 +37,6 @@ impl std::fmt::Display for AiLearnsToDriveError {
 impl std::error::Error for AiLearnsToDriveError {}
 
 const CAR_ACCELERATION: f64 = 0.70f64;
-const MAXIMUM_VELOCITY: f64 = 100f64;
 
 const CAR_HEIGHT: f64 = 50f64;
 const CAR_WIDTH: f64 = 25f64;
@@ -164,23 +163,27 @@ const REWARD_GATES: [BasicLine; 35] = [
 /// choose to accelerate forward, backward or neither and to rotate left, right or neither.
 ///
 /// ## Observation
-/// Space-Structure: `[8]`
+/// Space-Structure: `[11]`
 ///
 /// | Index | Observation | Min | Max |
 /// | --- | --- | --- | --- |
-/// | `[0]` | Frontal Distance | `0.0` | `1.0` |
-/// | `[0]` | Frontal Distance | `0.0` | `1.0` |
-/// | `[0]` | Frontal Distance | `0.0` | `1.0` |
-/// | `[0]` | Frontal Distance | `0.0` | `1.0` |
-/// | `[0]` | Frontal Distance | `0.0` | `1.0` |
-/// | `[0]` | Frontal Distance | `0.0` | `1.0` |
-/// | `[0]` | Frontal Distance | `0.0` | `1.0` |
-/// | `[0]` | Frontal Distance | `0.0` | `1.0` |
+/// | `[0]` | Velocity | `-1.0` | `1.0` |
+/// | `[1]` | Frontal Distance | `0.0` | `1.0` |
+/// | `[2]` | Frontal Right First Distance | `0.0` | `1.0` |
+/// | `[3]` | Frontal Right Second Distance | `0.0` | `1.0` |
+/// | `[4]` | Frontal Right Third Distance | `0.0` | `1.0` |
+/// | `[5]` | Rear Right Distance | `0.0` | `1.0` |
+/// | `[6]` | Rear Distance | `0.0` | `1.0` |
+/// | `[7]` | Rear Left Distance | `0.0` | `1.0` |
+/// | `[8]` | Rear Left Third Distance | `0.0` | `1.0` |
+/// | `[9]` | Rear Left Second Distance | `0.0` | `1.0` |
+/// | `[10]` | Rear Left First Distance | `0.0` | `1.0` |
 ///
 /// ## Actions
 /// Space-Structure: `[2]`
 ///
 /// | Index | Value | Action |
+/// | --- | --- | --- |
 /// | `[0]` | `-1` | Accelerate backwards |
 /// | `[0]` | `0` | Don't accelerate |
 /// | `[0]` | `1` | Accelerate forwards |
@@ -206,33 +209,18 @@ pub struct AiLearnsToDrive {
     car_position: Position2D,
     car_angle_in_degrees: f64,
 
-    car_sensor_distance: f64,
+    pub car_maximum_velocity: f64,
+    pub car_sensor_distance: f64,
 
     last_collisions: Vec<Position2D>,
     last_reward_gate_touched: Option<usize>,
 
-    show_sensor_lines: bool,
-    show_track: bool,
-    show_reward_gates: bool,
+    pub show_sensor_lines: bool,
+    pub show_track: bool,
+    pub show_reward_gates: bool,
 }
 
 impl AiLearnsToDrive {
-    pub fn sensor_lines_visible(&mut self, visible: bool) {
-        self.show_sensor_lines = visible;
-    }
-
-    pub fn track_visible(&mut self, visible: bool) {
-        self.show_track = visible;
-    }
-
-    pub fn reward_gates_visible(&mut self, visible: bool) {
-        self.show_reward_gates = visible;
-    }
-
-    pub fn car_sensor_distance(&mut self, car_sensor_distance: f64) {
-        self.car_sensor_distance = car_sensor_distance;
-    }
-
     fn calculate_collisions(
         &self,
         lines: &[BasicLine],
@@ -454,6 +442,7 @@ impl Default for AiLearnsToDrive {
             car_angle_in_degrees: 0f64,
 
             car_sensor_distance: 750f64,
+            car_maximum_velocity: 100f64,
 
             last_collisions: Vec::new(),
             last_reward_gate_touched: None,
@@ -497,6 +486,7 @@ impl Environment<AiLearnsToDriveError, (), AiLearnsToDriveStorage> for AiLearnsT
         // This manual indexing and long list of creating the state is there so that indexing problems may be discovered by the compiler
         let raycasted_points = self.raycast();
         EnvironmentState::simple(vec![
+            DimensionValue::FLOAT((self.car_velocity.length() / self.car_maximum_velocity) as f32),
             DimensionValue::FLOAT(
                 (self.car_position.vector_to(&raycasted_points[0]).length()
                     / self.car_sensor_distance) as f32,
@@ -563,9 +553,9 @@ impl Environment<AiLearnsToDriveError, (), AiLearnsToDriveStorage> for AiLearnsT
         .normalized()
             * (CAR_ACCELERATION * acceleration_action as f64);
         self.car_velocity *= 0.97f64;
-        if self.car_velocity.length().abs() > MAXIMUM_VELOCITY {
-            self.car_velocity = self.car_velocity.normalized() * MAXIMUM_VELOCITY;
-        } else if self.car_velocity.length().abs() < (MAXIMUM_VELOCITY / 1000f64) {
+        if self.car_velocity.length().abs() > self.car_maximum_velocity {
+            self.car_velocity = self.car_velocity.normalized() * self.car_maximum_velocity;
+        } else if self.car_velocity.length().abs() < (self.car_maximum_velocity / 1000f64) {
             self.car_velocity = Vector2D::zero();
         }
 
