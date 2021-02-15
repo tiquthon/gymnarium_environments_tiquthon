@@ -6,7 +6,8 @@
 use gymnarium_base::math::{Position2D, Size2D, Transformation2D, Transformations2D, Vector2D};
 use gymnarium_base::space::{DimensionBoundaries, DimensionValue};
 use gymnarium_base::{
-    ActionSpace, AgentAction, Environment, EnvironmentState, ObservationSpace, Seed, ToActionMapper,
+    ActionSpace, AgentAction, Environment, EnvironmentState, ObservationSpace, Reward, Seed,
+    ToActionMapper,
 };
 
 use gymnarium_visualisers_base::input::{Button, ButtonState, Input, Key};
@@ -194,7 +195,17 @@ const REWARD_GATES: [BasicLine; 35] = [
 ///
 /// ## Reward
 ///
-/// TODO
+/// There are four rewards represented by the enum [AiLearnsToDriveReward] :
+///
+/// * [AiLearnsToDriveReward::TookTime] with default reward of `-1f64`
+/// * [AiLearnsToDriveReward::TookTimeAndCollidedWithRoadside] with default reward of `-21f64`
+/// * [AiLearnsToDriveReward::TookTimeAndTouchedNewRewardGate] with default reward of `9f64`
+/// * [AiLearnsToDriveReward::TookTimeAndCollidedWithRoadsideAndTouchedNewRewardGate] with default reward of `-11f64`
+///
+/// All of those values can be changed by accessing the struct fields
+/// [AiLearnsToDrive::reward_on_took_time], [AiLearnsToDrive::reward_on_took_time_and_collided],
+/// [AiLearnsToDrive::reward_on_took_time_and_reward_gate] or
+/// [AiLearnsToDrive::reward_on_took_time_and_collided_and_reward_gate].
 ///
 /// ## Starting State
 /// The position of the car is always assigned to `(87|573)`.
@@ -203,7 +214,7 @@ const REWARD_GATES: [BasicLine; 35] = [
 ///
 /// ## Episode Termination
 ///
-/// TODO
+/// The environment returns `done = True` whenever the car touches the roadside.
 ///
 pub struct AiLearnsToDrive {
     car_velocity: Vector2D,
@@ -219,6 +230,11 @@ pub struct AiLearnsToDrive {
     pub show_sensor_lines: bool,
     pub show_track: bool,
     pub show_reward_gates: bool,
+
+    pub reward_on_took_time: f64,
+    pub reward_on_took_time_and_collided: f64,
+    pub reward_on_took_time_and_reward_gate: f64,
+    pub reward_on_took_time_and_collided_and_reward_gate: f64,
 }
 
 impl AiLearnsToDrive {
@@ -451,11 +467,22 @@ impl Default for AiLearnsToDrive {
             show_sensor_lines: false,
             show_track: true,
             show_reward_gates: false,
+
+            // -1f64 so the car tries to be fast
+            reward_on_took_time: -1f64,
+            // -1f64 -20f64 for colliding with roadside
+            reward_on_took_time_and_collided: -21f64,
+            // -1f64 +10f64 for touching new reward gate
+            reward_on_took_time_and_reward_gate: 9f64,
+            // -1f64 -20f64 +10f64 for colliding with roadside and touching new reward gate
+            reward_on_took_time_and_collided_and_reward_gate: -11f64,
         }
     }
 }
 
-impl Environment<AiLearnsToDriveError, f64, (), AiLearnsToDriveStorage> for AiLearnsToDrive {
+impl Environment<AiLearnsToDriveError, AiLearnsToDriveReward, (), AiLearnsToDriveStorage>
+    for AiLearnsToDrive
+{
     fn action_space() -> ActionSpace {
         ActionSpace::simple_all(DimensionBoundaries::INTEGER(-1, 1), 2)
     }
@@ -556,7 +583,7 @@ impl Environment<AiLearnsToDriveError, f64, (), AiLearnsToDriveStorage> for AiLe
     fn step(
         &mut self,
         action: &AgentAction,
-    ) -> Result<(EnvironmentState, f64, bool, ()), AiLearnsToDriveError> {
+    ) -> Result<(EnvironmentState, AiLearnsToDriveReward, bool, ()), AiLearnsToDriveError> {
         if !Self::action_space().contains(action) {
             return Err(AiLearnsToDriveError::GivenActionDoesNotFitActionSpace);
         }
@@ -612,17 +639,23 @@ impl Environment<AiLearnsToDriveError, f64, (), AiLearnsToDriveStorage> for AiLe
         };
 
         // CALCULATE REWARD
-        let reward = -1f64
-            + if self.last_collisions.is_empty() {
-                0f64
+        let reward = if self.last_collisions.is_empty() {
+            if touched_new_reward_gate {
+                AiLearnsToDriveReward::TookTimeAndCollidedWithRoadsideAndTouchedNewRewardGate(
+                    self.reward_on_took_time_and_collided_and_reward_gate,
+                )
             } else {
-                -100f64
+                AiLearnsToDriveReward::TookTimeAndCollidedWithRoadside(
+                    self.reward_on_took_time_and_collided,
+                )
             }
-            + if touched_new_reward_gate {
-                100f64
-            } else {
-                0f64
-            };
+        } else if touched_new_reward_gate {
+            AiLearnsToDriveReward::TookTimeAndTouchedNewRewardGate(
+                self.reward_on_took_time_and_reward_gate,
+            )
+        } else {
+            AiLearnsToDriveReward::TookTime(self.reward_on_took_time)
+        };
 
         Ok((self.state(), reward, !self.last_collisions.is_empty(), ()))
     }
@@ -632,6 +665,7 @@ impl Environment<AiLearnsToDriveError, f64, (), AiLearnsToDriveStorage> for AiLe
         self.car_position = data.car_position;
         self.car_angle_in_degrees = data.car_angle;
         self.last_collisions = data.last_collisions;
+        self.last_reward_gate_touched = data.last_reward_gate_touched;
         Ok(())
     }
 
@@ -641,6 +675,7 @@ impl Environment<AiLearnsToDriveError, f64, (), AiLearnsToDriveStorage> for AiLe
             car_position: self.car_position,
             car_angle: self.car_angle_in_degrees,
             last_collisions: self.last_collisions.clone(),
+            last_reward_gate_touched: self.last_reward_gate_touched,
         }
     }
 
@@ -767,12 +802,32 @@ impl TwoDimensionalDrawableEnvironment<AiLearnsToDriveError> for AiLearnsToDrive
     }
 }
 
+#[derive(Debug)]
+pub enum AiLearnsToDriveReward {
+    TookTime(f64),
+    TookTimeAndCollidedWithRoadside(f64),
+    TookTimeAndTouchedNewRewardGate(f64),
+    TookTimeAndCollidedWithRoadsideAndTouchedNewRewardGate(f64),
+}
+
+impl Reward for AiLearnsToDriveReward {
+    fn value(&self) -> f64 {
+        match self {
+            Self::TookTime(value) => *value,
+            Self::TookTimeAndCollidedWithRoadside(value) => *value,
+            Self::TookTimeAndTouchedNewRewardGate(value) => *value,
+            Self::TookTimeAndCollidedWithRoadsideAndTouchedNewRewardGate(value) => *value,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct AiLearnsToDriveStorage {
     car_velocity: Vector2D,
     car_position: Position2D,
     car_angle: f64,
     last_collisions: Vec<Position2D>,
+    last_reward_gate_touched: Option<usize>,
 }
 
 #[derive(Default)]
