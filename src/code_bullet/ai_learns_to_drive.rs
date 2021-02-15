@@ -163,21 +163,22 @@ const REWARD_GATES: [BasicLine; 35] = [
 /// choose to accelerate forward, backward or neither and to rotate left, right or neither.
 ///
 /// ## Observation
-/// Space-Structure: `[11]`
+/// Space-Structure: `[12]`
 ///
 /// | Index | Observation | Min | Max |
 /// | --- | --- | --- | --- |
-/// | `[0]` | Velocity | `-1.0` | `1.0` |
-/// | `[1]` | Frontal Distance | `0.0` | `1.0` |
-/// | `[2]` | Frontal Right First Distance | `0.0` | `1.0` |
-/// | `[3]` | Frontal Right Second Distance | `0.0` | `1.0` |
-/// | `[4]` | Frontal Right Third Distance | `0.0` | `1.0` |
-/// | `[5]` | Rear Right Distance | `0.0` | `1.0` |
-/// | `[6]` | Rear Distance | `0.0` | `1.0` |
-/// | `[7]` | Rear Left Distance | `0.0` | `1.0` |
-/// | `[8]` | Rear Left Third Distance | `0.0` | `1.0` |
-/// | `[9]` | Rear Left Second Distance | `0.0` | `1.0` |
-/// | `[10]` | Rear Left First Distance | `0.0` | `1.0` |
+/// | `[0]` | Forward or Backward Velocity | `-1.0` | `1.0` |
+/// | `[1]` | Right or Left Velocity | `-1.0` | `1.0` |
+/// | `[2]` | Frontal Distance | `0.0` | `1.0` |
+/// | `[3]` | Frontal Right First Distance | `0.0` | `1.0` |
+/// | `[4]` | Frontal Right Second Distance | `0.0` | `1.0` |
+/// | `[5]` | Frontal Right Third Distance | `0.0` | `1.0` |
+/// | `[6]` | Rear Right Distance | `0.0` | `1.0` |
+/// | `[7]` | Rear Distance | `0.0` | `1.0` |
+/// | `[8]` | Rear Left Distance | `0.0` | `1.0` |
+/// | `[9]` | Rear Left Third Distance | `0.0` | `1.0` |
+/// | `[10]` | Rear Left Second Distance | `0.0` | `1.0` |
+/// | `[11]` | Rear Left First Distance | `0.0` | `1.0` |
 ///
 /// ## Actions
 /// Space-Structure: `[2]`
@@ -454,13 +455,26 @@ impl Default for AiLearnsToDrive {
     }
 }
 
-impl Environment<AiLearnsToDriveError, (), AiLearnsToDriveStorage> for AiLearnsToDrive {
+impl Environment<AiLearnsToDriveError, f64, (), AiLearnsToDriveStorage> for AiLearnsToDrive {
     fn action_space() -> ActionSpace {
         ActionSpace::simple_all(DimensionBoundaries::INTEGER(-1, 1), 2)
     }
 
     fn observation_space() -> ObservationSpace {
-        ObservationSpace::simple_all(DimensionBoundaries::FLOAT(0f32, 1f32), 10)
+        ObservationSpace::simple(vec![
+            DimensionBoundaries::FLOAT(-1f32, 1f32),
+            DimensionBoundaries::FLOAT(-1f32, 1f32),
+            DimensionBoundaries::FLOAT(0f32, 1f32),
+            DimensionBoundaries::FLOAT(0f32, 1f32),
+            DimensionBoundaries::FLOAT(0f32, 1f32),
+            DimensionBoundaries::FLOAT(0f32, 1f32),
+            DimensionBoundaries::FLOAT(0f32, 1f32),
+            DimensionBoundaries::FLOAT(0f32, 1f32),
+            DimensionBoundaries::FLOAT(0f32, 1f32),
+            DimensionBoundaries::FLOAT(0f32, 1f32),
+            DimensionBoundaries::FLOAT(0f32, 1f32),
+            DimensionBoundaries::FLOAT(0f32, 1f32),
+        ])
     }
 
     fn suggested_episode_steps_count() -> Option<u128> {
@@ -483,10 +497,19 @@ impl Environment<AiLearnsToDriveError, (), AiLearnsToDriveStorage> for AiLearnsT
     }
 
     fn state(&self) -> EnvironmentState {
-        // This manual indexing and long list of creating the state is there so that indexing problems may be discovered by the compiler
+        let relative_velocity_vector = Position2D::zero()
+            .vector_to(
+                &(Position2D::zero() + self.car_velocity).transform(&Transformations2D {
+                    transformations: vec![Transformation2D::rotation(-self.car_angle_in_degrees)],
+                }),
+            )
+            .normalized()
+            * self.car_velocity.length();
         let raycasted_points = self.raycast();
+        // This manual indexing and long list of creating the state is there so that indexing problems may be discovered by the compiler
         EnvironmentState::simple(vec![
-            DimensionValue::FLOAT((self.car_velocity.length() / self.car_maximum_velocity) as f32),
+            DimensionValue::FLOAT(relative_velocity_vector.x as f32),
+            DimensionValue::FLOAT(relative_velocity_vector.y as f32),
             DimensionValue::FLOAT(
                 (self.car_position.vector_to(&raycasted_points[0]).length()
                     / self.car_sensor_distance) as f32,
