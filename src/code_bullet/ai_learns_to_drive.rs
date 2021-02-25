@@ -535,8 +535,16 @@ impl Environment<AiLearnsToDriveError, AiLearnsToDriveReward, (), AiLearnsToDriv
         let raycasted_points = self.raycast();
         // This manual indexing and long list of creating the state is there so that indexing problems may be discovered by the compiler
         EnvironmentState::simple(vec![
-            DimensionValue::FLOAT(relative_velocity_vector.x as f32),
-            DimensionValue::FLOAT(relative_velocity_vector.y as f32),
+            DimensionValue::FLOAT(if relative_velocity_vector.x.is_nan() {
+                0f32
+            } else {
+                relative_velocity_vector.x as f32
+            }),
+            DimensionValue::FLOAT(if relative_velocity_vector.y.is_nan() {
+                0f32
+            } else {
+                relative_velocity_vector.y as f32
+            }),
             DimensionValue::FLOAT(
                 (self.car_position.vector_to(&raycasted_points[0]).length()
                     / self.car_sensor_distance) as f32,
@@ -639,7 +647,7 @@ impl Environment<AiLearnsToDriveError, AiLearnsToDriveReward, (), AiLearnsToDriv
         };
 
         // CALCULATE REWARD
-        let reward = if self.last_collisions.is_empty() {
+        let reward = if !self.last_collisions.is_empty() {
             if touched_new_reward_gate {
                 AiLearnsToDriveReward::TookTimeAndCollidedWithRoadsideAndTouchedNewRewardGate(
                     self.reward_on_took_time_and_collided_and_reward_gate,
