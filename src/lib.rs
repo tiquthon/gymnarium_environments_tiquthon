@@ -1,4 +1,3 @@
-#![feature(iterator_fold_self)]
 //! # Gymnarium Tiquthon Environments
 //!
 //! `gymnarium_environments_tiquthon` contains environments for the `gymnarium_libraries`

@@ -426,7 +426,7 @@ impl AiLearnsToDrive {
                             (*start_pos, *end_pos),
                         )
                     })
-                    .fold_first(|a, b| {
+                    .reduce(|a, b| {
                         if start_pos.vector_to(&a).length() < start_pos.vector_to(&b).length() {
                             a
                         } else {
@@ -484,23 +484,23 @@ impl Environment<AiLearnsToDriveError, AiLearnsToDriveReward, (), AiLearnsToDriv
     for AiLearnsToDrive
 {
     fn action_space() -> ActionSpace {
-        ActionSpace::simple_all(DimensionBoundaries::INTEGER(-1, 1), 2)
+        ActionSpace::simple_all(DimensionBoundaries::Integer(-1, 1), 2)
     }
 
     fn observation_space() -> ObservationSpace {
         ObservationSpace::simple(vec![
-            DimensionBoundaries::FLOAT(-1f32, 1f32),
-            DimensionBoundaries::FLOAT(-1f32, 1f32),
-            DimensionBoundaries::FLOAT(0f32, 1f32),
-            DimensionBoundaries::FLOAT(0f32, 1f32),
-            DimensionBoundaries::FLOAT(0f32, 1f32),
-            DimensionBoundaries::FLOAT(0f32, 1f32),
-            DimensionBoundaries::FLOAT(0f32, 1f32),
-            DimensionBoundaries::FLOAT(0f32, 1f32),
-            DimensionBoundaries::FLOAT(0f32, 1f32),
-            DimensionBoundaries::FLOAT(0f32, 1f32),
-            DimensionBoundaries::FLOAT(0f32, 1f32),
-            DimensionBoundaries::FLOAT(0f32, 1f32),
+            DimensionBoundaries::Float(-1f32, 1f32),
+            DimensionBoundaries::Float(-1f32, 1f32),
+            DimensionBoundaries::Float(0f32, 1f32),
+            DimensionBoundaries::Float(0f32, 1f32),
+            DimensionBoundaries::Float(0f32, 1f32),
+            DimensionBoundaries::Float(0f32, 1f32),
+            DimensionBoundaries::Float(0f32, 1f32),
+            DimensionBoundaries::Float(0f32, 1f32),
+            DimensionBoundaries::Float(0f32, 1f32),
+            DimensionBoundaries::Float(0f32, 1f32),
+            DimensionBoundaries::Float(0f32, 1f32),
+            DimensionBoundaries::Float(0f32, 1f32),
         ])
     }
 
@@ -535,53 +535,53 @@ impl Environment<AiLearnsToDriveError, AiLearnsToDriveReward, (), AiLearnsToDriv
         let raycasted_points = self.raycast();
         // This manual indexing and long list of creating the state is there so that indexing problems may be discovered by the compiler
         EnvironmentState::simple(vec![
-            DimensionValue::FLOAT(if relative_velocity_vector.x.is_nan() {
+            DimensionValue::Float(if relative_velocity_vector.x.is_nan() {
                 0f32
             } else {
                 relative_velocity_vector.x as f32
             }),
-            DimensionValue::FLOAT(if relative_velocity_vector.y.is_nan() {
+            DimensionValue::Float(if relative_velocity_vector.y.is_nan() {
                 0f32
             } else {
                 relative_velocity_vector.y as f32
             }),
-            DimensionValue::FLOAT(
+            DimensionValue::Float(
                 (self.car_position.vector_to(&raycasted_points[0]).length()
                     / self.car_sensor_distance) as f32,
             ),
-            DimensionValue::FLOAT(
+            DimensionValue::Float(
                 (self.car_position.vector_to(&raycasted_points[1]).length()
                     / self.car_sensor_distance) as f32,
             ),
-            DimensionValue::FLOAT(
+            DimensionValue::Float(
                 (self.car_position.vector_to(&raycasted_points[2]).length()
                     / self.car_sensor_distance) as f32,
             ),
-            DimensionValue::FLOAT(
+            DimensionValue::Float(
                 (self.car_position.vector_to(&raycasted_points[3]).length()
                     / self.car_sensor_distance) as f32,
             ),
-            DimensionValue::FLOAT(
+            DimensionValue::Float(
                 (self.car_position.vector_to(&raycasted_points[4]).length()
                     / self.car_sensor_distance) as f32,
             ),
-            DimensionValue::FLOAT(
+            DimensionValue::Float(
                 (self.car_position.vector_to(&raycasted_points[5]).length()
                     / self.car_sensor_distance) as f32,
             ),
-            DimensionValue::FLOAT(
+            DimensionValue::Float(
                 (self.car_position.vector_to(&raycasted_points[6]).length()
                     / self.car_sensor_distance) as f32,
             ),
-            DimensionValue::FLOAT(
+            DimensionValue::Float(
                 (self.car_position.vector_to(&raycasted_points[7]).length()
                     / self.car_sensor_distance) as f32,
             ),
-            DimensionValue::FLOAT(
+            DimensionValue::Float(
                 (self.car_position.vector_to(&raycasted_points[8]).length()
                     / self.car_sensor_distance) as f32,
             ),
-            DimensionValue::FLOAT(
+            DimensionValue::Float(
                 (self.car_position.vector_to(&raycasted_points[9]).length()
                     / self.car_sensor_distance) as f32,
             ),
